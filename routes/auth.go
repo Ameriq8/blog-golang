@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-blog/database"
 	"go-blog/models"
@@ -15,23 +16,42 @@ type LoginBody struct {
 }
 
 func Login(c *gin.Context) {
-	var user LoginBody
-	if err := c.ShouldBindBodyWithJSON(&user); err != nil {
+	var body LoginBody
+	if err := c.ShouldBindBodyWithJSON(&body); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	if user.Phone == "" || user.Password == "" {
+	if body.Phone == "" || body.Password == "" {
 		c.JSON(400, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	if !validatePhoneNumberIsIraqiPhoneNumber(user.Phone) {
+	if !validatePhoneNumberIsIraqiPhoneNumber(body.Phone) {
 		c.JSON(400, gin.H{"error": "Invalid phone number"})
 		return
 	}
 
-	fmt.Println("Login", user)
+	var user models.User
+	result := database.GetDB().Where("phone = ?", body.Phone).First(&user)
+	if result.Error != nil {
+		c.JSON(400, gin.H{"error": "Invalid phone number"})
+		return
+	}
+
+	if user.Password != body.Password {
+		c.JSON(400, gin.H{"error": "Invalid password"})
+		return
+	}
+
+	jsonData, err := json.MarshalIndent(user, "", "    ")
+	if err != nil {
+		fmt.Printf("Error marshaling JSON: %v\n", err)
+		return
+	}
+
+	// Print JSON string to console
+	fmt.Println(string(jsonData))
 	c.JSON(200, gin.H{"message": "Login successful"})
 }
 
@@ -57,7 +77,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	var user models.UsersModel
+	var user models.User
 	result := database.GetDB().Where("phone = ?", body.Phone).First(&user)
 	if result.Error == nil {
 		c.JSON(400, gin.H{"error": "Phone number already exists"})
@@ -65,7 +85,7 @@ func Register(c *gin.Context) {
 	}
 
 	// Create new user
-	newUser := models.UsersModel{
+	newUser := models.User{
 		Phone:    body.Phone,
 		Password: body.Password, // Note: In production, hash this password!
 	}

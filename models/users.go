@@ -2,7 +2,7 @@ package models
 
 import "gorm.io/gorm"
 
-type UsersModel struct {
+type User struct {
 	gorm.Model
 	ID       uint   `json:"id" gorm:"primaryKey"`
 	Phone    string `json:"phone" gorm:"unique;not null"`
